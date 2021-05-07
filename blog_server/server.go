@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"log"
 	"net"
@@ -177,10 +178,41 @@ func (*server) DeleteBlog(ctx context.Context, req *blogpb.DeleteBlogRequest) (*
 	return &blogpb.DeleteBlogResponse{BlogId: req.GetBlogId()}, nil
 }
 
-func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+func (*server) ListBlog(_ *blogpb.ListBlogRequest, stream blogpb.BlogService_ListBlogServer) error {
+	fmt.Println("List blog request")
 
-	fmt.Println("Blog service started")
+	cur, err := collection.Find(context.Background(), primitive.D{{}})
+	if err != nil {
+		return status.Errorf(
+			codes.Internal,
+			fmt.Sprintf("Unknown internal error: %v", err),
+		)
+	}
+	defer cur.Close(context.Background()) // Should handle err
+	for cur.Next(context.Background()) {
+		data := &blogItem{}
+		err := cur.Decode(data)
+		if err != nil {
+			return status.Errorf(
+				codes.Internal,
+				fmt.Sprintf("Error while decoding data from MongoDB: %v", err),
+			)
+
+		}
+		stream.Send(&blogpb.ListBlogResponse{Blog: dataToBlogPb(data)}) // Should handle err
+	}
+	if err := cur.Err(); err != nil {
+		return status.Errorf(
+			codes.Internal,
+			fmt.Sprintf("Unknown internal error: %v", err),
+		)
+	}
+	return nil
+}
+
+func main() {
+	// if we crash the go code, we get the file name and line number
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	fmt.Println("Connecting to MongoDB")
 	// connect to MongoDB
@@ -193,6 +225,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Println("Blog Service Started")
 	collection = client.Database("mydb").Collection("blog")
 
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
@@ -200,22 +233,25 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	s := grpc.NewServer()
+	var opts []grpc.ServerOption
+	s := grpc.NewServer(opts...)
 	blogpb.RegisterBlogServiceServer(s, &server{})
+	// Register reflection service on gRPC server.
+	reflection.Register(s)
 
 	go func() {
-		fmt.Println("Starting server...")
+		fmt.Println("Starting Server...")
 		if err := s.Serve(lis); err != nil {
-			log.Fatalf("Failed to serve: %v", err)
+			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 
-	// wait for Ctrl-C to exit
+	// Wait for Control C to exit
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 
-	// Block until the signal is received
-	<- ch
+	// Block until a signal is received
+	<-ch
 	// First we close the connection with MongoDB:
 	fmt.Println("Closing MongoDB Connection")
 	if err := client.Disconnect(context.TODO()); err != nil {
@@ -223,9 +259,7 @@ func main() {
 	}
 
 	// Finally, we stop the server
-	fmt.Println("Stopping the server...")
+	fmt.Println("Stopping the server")
 	s.Stop()
-	fmt.Println("Closing listener...")
-	lis.Close()
-	fmt.Println("End of program")
+	fmt.Println("End of Program")
 }
