@@ -35,3 +35,13 @@ The last command should show that `mongod` was started successfully.
 ## Install Robo 3T
 
 [Robo 3T](https://github.com/Studio3T/robomongo) is a GUI for MongoDB. Install the latest release from GitHub releases.
+
+## Install MongoDB Go Driver
+
+To connect to MongoDB the blog serivce uses the [mongodb-go-driver](https://github.com/mongodb/mongo-go-driver)
+
+To add the dependency, do
+
+```bash
+$ go get go.mongodb.org/mongo-driver/mongo
+```
