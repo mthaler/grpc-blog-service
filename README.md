@@ -36,6 +36,10 @@ The last command should show that `mongod` was started successfully.
 
 [Robo 3T](https://github.com/Studio3T/robomongo) is a GUI for MongoDB. Install the latest release from GitHub releases.
 
+Robo 3T can be used to inspect the blog database:
+
+![Robo 3T](screenshots/robo3t.jpg)
+
 ## Install MongoDB Go Driver
 
 To connect to MongoDB the blog serivce uses the [mongodb-go-driver](https://github.com/mongodb/mongo-go-driver)
