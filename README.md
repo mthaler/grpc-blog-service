@@ -19,3 +19,19 @@ $ export PATH="$PATH:$(go env GOPATH)/bin"
 ```bash
 $ protoc --go_out=. --go-grpc_out=.  blogpb/blog.proto
 ```
+
+## Install MongoDB
+
+Download MongoDB from https://www.mongodb.com/try/download/community and install it. On Debian Linux, run the following commands to start `mongod`:
+
+```bash
+# systemctl enable mongod
+# systemctl start mongod
+# systemctl status mongod
+```
+
+The last command should show that `mongod` was started successfully.
+
+## Install Robo 3T
+
+[Robo 3T](https://github.com/Studio3T/robomongo) is a GUI for MongoDB. Install the latest release from GitHub releases.
